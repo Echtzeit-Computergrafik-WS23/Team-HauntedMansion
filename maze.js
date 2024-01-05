@@ -11,7 +11,7 @@ var platform_height  = 1000;
 var quad_buffer;
 var quad_loc;
 var skybox_loc;
-
+//
 // Menu Elements
 var menu ;
 var maze_change;
