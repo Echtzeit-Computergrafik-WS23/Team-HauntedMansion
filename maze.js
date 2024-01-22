@@ -20,8 +20,26 @@ var fogFar_loc;
 var fogDensity_loc;
 var fogDensityPlat_loc;
 
-// Flashlight
-var cursorUniform_loc;
+// Flashlight Elements
+var flashlightPosition_loc; 
+var flashlightDirection_loc;
+var flashlightCutoff_loc;
+var flashlightIntensity_loc; 
+var flashlightColor_loc;
+var flashlightOn_loc;
+var flashlightInnerLimit_loc;
+var flashlightOuterLimit_loc;
+var flashlightPosition = [0.0, 5.0, 0.0]; // Example position
+var flashlightDirection = [0.0, -1.0, 0.0]; // Example direction
+
+function degToRad(d){
+    return d * Math.PI / 180;
+}
+function radToDeg(r){
+    return r * Math.PI / 180;
+}
+var startTime = Date.now();
+var flashlightFlicker_loc;
 
 // Menu Elements
 var menu;
@@ -121,6 +139,7 @@ var r_speed = 0;
 var pointer_lock_bit = 0;
 
 
+
 function init() {
     maze_parameters = document.getElementById("maze_parameters");
     maze_change = document.getElementById("change_maze");
@@ -168,11 +187,11 @@ function init() {
     fogDensityPlat_loc = gl.getUniformLocation(shader_program_0,"u_fogDensityPlatform");
     var fogColor = [0.8, 0.9, 1, 1]; // Farbe vom Nebel
     var settings = {
-        fogAmount: .1, 
-        fogNear: .2, // FogNear+ Far ist ab wann man den Nebel sieht bzw. nicht mehr sieht
+        fogAmount: 1.1, 
+        fogNear: 0.2, // FogNear+ Far ist ab wann man den Nebel sieht bzw. nicht mehr sieht
         fogFar: 1.7,
-        fogDensity: .1, // Hier Wert nieriger machen für weniger Nebel
-        fogDensityPlat: 0.5,
+        fogDensity: 1.0, // Hier Wert nieriger machen für weniger Nebel
+        fogDensityPlat: 1.5, // Die Stärke des Nebels für den Boden 
     };
     gl.uniform4fv(fogColor_loc, fogColor);
     gl.uniform1f(fogNear_loc, settings.fogNear);
@@ -181,18 +200,43 @@ function init() {
     gl.uniform1f(fogDensity_loc, settings.fogDensity);
     gl.uniform1f(fogDensityPlat_loc, settings.fogDensityPlat);
 
-    // Setup Flashlight;
-    cursorUniform_loc = gl.getUniformLocation(shader_program_0, "u_cursor");
-    const cursor = [0, 0]
-    canvas.addEventListener('mousemove', (event) =>
-    {
-        cursor[0] = (event.offsetX / canvas.width) * 2 - 1;
-        cursor[1] = (event.offsetY / canvas.height) * -2 + 1;
-        gl.useProgram(shader_program_0);  // Assuming shader_program_0 is your active shader program
-        gl.uniform2fv(cursorUniform, cursor);
-    });
     
+    // Flashlight setup
+    flashlightPosition_loc = gl.getUniformLocation(shader_program_0, "u_flashlightPosition");
+    flashlightDirection_loc = gl.getUniformLocation(shader_program_0, "u_flashlightDirection");
+    flashlightIntensity_loc = gl.getUniformLocation(shader_program_0, "u_flashlightIntensity");
+    flashlightColor_loc = gl.getUniformLocation(shader_program_0,"u_flashlightColor");
+    flashlightOn_loc = gl.getUniformLocation(shader_program_0,"u_flashLight_On");
+    flashlightInnerLimit_loc = gl.getUniformLocation(shader_program_0, "u_flashlightInnerLimit");
+    flashlightOuterLimit_loc = gl.getUniformLocation(shader_program_0, "u_flashlightOuterLimit");
+    flashlightFlicker_loc = gl.getUniformLocation(shader_program_0, "u_time");
+    var flashlightOn = true;
+    var flashlightColor = [1, 0 ,0];
+    var flashlightIntensity = 1.0;
+    var innerLimit = degToRad(10);
+    var outerLimit = degToRad(20);
 
+    document.addEventListener('keydown', function(event) {
+        // Check if the pressed key is the 'F' key
+        if (event.key === 'F' || event.key === 'f') {
+            console.log("Flashlight On");
+            toggleFlashlight();
+            
+        }
+    });
+    function toggleFlashlight() {
+        flashlightOn = 1 - flashlightOn;
+    
+        gl.useProgram(shader_program_0);
+        gl.uniform1i(flashlightOn_loc, flashlightOn ? 1 : 0);
+        console.log("Flashlight On");
+    }
+    gl.uniform3fv(flashlightColor_loc, flashlightColor);
+    gl.uniform1f(flashlightIntensity_loc, flashlightIntensity);  
+    gl.uniform1f(flashlightInnerLimit_loc, Math.cos(innerLimit));
+    gl.uniform1f(flashlightOuterLimit_loc, Math.cos(outerLimit));
+    
+   
     // Setup Wände
     walls_vertices = [];
     walls_text_coords = [];
@@ -248,6 +292,7 @@ function init() {
 
     texture_loc = gl.getUniformLocation(shader_program_0, "utexture");
 
+    
     // Wand Texturen
     gl.activeTexture(gl.TEXTURE1);
     var wall_texture_buffer = gl.createTexture();
@@ -262,7 +307,7 @@ function init() {
     gl.generateMipmap(gl.TEXTURE_2D);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-
+    
     //  Setup Normals 
     normals_loc = gl.getAttribLocation(shader_program_0, "anormal");
 
@@ -385,6 +430,15 @@ function init() {
     };
     document.getElementById("shine").oninput = function () {
         gl.uniform1f(shine_loc, this.value);
+    };
+    document.getElementById("flashlightIntensity").oninput = function () {
+        gl.uniform1f(flashlightIntensity_loc, this.value);
+    };
+    document.getElementById("flashlightInnerLimit").oninput = function () {
+        gl.uniform1f(flashlightInnerLimit_loc, this.value);
+    };
+    document.getElementById("flashlightOuterLimit").oninput = function () {
+        gl.uniform1f(flashlightOuterLimit_loc, this.value);
     };
    
     document.getElementById("cell_size").oninput = function () {
@@ -944,9 +998,33 @@ function animate() {
     gl.uniform1i(skybox_loc, 2);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.useProgram(shader_program_0);
-    requestAnimationFrame(animate);
+    
 
-    gl.uniform2f(cursorUniform, cursor[0], cursor[1]);
+    // flashlight     
+    var flashlightPosition = [camera_x , camera_y, camera_z]; // Set the flashlight position
+    var flashlightDirection = normalize(camera_direction); // Set the flashlight direction
+    gl.uniform3fv(flashlightPosition_loc, flashlightPosition);
+    gl.uniform3fv(flashlightDirection_loc, flashlightDirection);
+    
+    // flicker effect
+    var currentTime = Date.now();
+    var elapsedTime = (currentTime - startTime) / 1000.0; // Convert to seconds
+    gl.uniform1f(flashlightFlicker_loc, elapsedTime);
+
+
+    requestAnimationFrame(animate);
+}
+
+function updateFlashlight() {
+    
+    const cameraDirectionRadians = camera_direction * Math.PI / 180.0;
+
+    flashlightDirection[0] = Math.cos(cameraDirectionRadians); 
+    flashlightDirection[2] = Math.sin(cameraDirectionRadians); 
+
+    flashlightPosition[0] = camera_x;
+    flashlightPosition[1] = camera_y;
+    flashlightPosition[2] = camera_z;
 }
 
 function mouse_rotate(e) {
@@ -1191,6 +1269,7 @@ function start_game() {
         camera_x = - maze_cell_size * (cells[0].length) / 2;
         camera_z = maze_cell_size * (cells.length) / 2;
         camera_y = player_height;
+        
 
         translation_view_mat = translate(camera_x, camera_y, camera_z);
         menu.style.display = "none";
