@@ -126,13 +126,13 @@
     uniform mat4 u_worldView;
     varying float v_fogDepth;
     
-    varying vec3 v_debugColor; // Debug color
-    
     // Flashlight parameter
     uniform vec3 u_flashlightPosition;
+    varying vec3 v_flashlightPosition;
     varying vec3 v_surfaceToFlashlight;
     uniform mat4 u_world;
     uniform float u_time;
+   
 
     void main() {
         gl_Position = umatrix * aposition;
@@ -143,9 +143,10 @@
 
         // Debugging
         v_fogDepth = u_time;
-        v_debugColor = vec3(0.0, 1.0, 0.0); 
+         
         vec3 surfaceWorldPosition = (u_world * aposition).xyz;
         v_surfaceToFlashlight = u_flashlightPosition - surfaceWorldPosition;
+        v_flashlightPosition = u_flashlightPosition;
 
 
     }
@@ -179,38 +180,49 @@
         uniform float u_flashlightIntensity; 
         uniform float u_flashlightInnerLimit; 
         uniform float u_flashlightOuterLimit;
-        
+        varying vec3 v_flashlightPosition;
+        uniform vec3 u_flashlightDirection;
+        uniform float u_flashlightConeAngle;
+        uniform float u_flashlightConeSoftness;
+
         void main(){          
             vec3 normal = normalize(vnormal);
             float diffuse_light = udiffuse * max(dot(normal, ureverse_light_dir), 0.0);       
             gl_FragColor = texture2D(utexture, vtextcoord);
             gl_FragColor.rgb*= diffuse_light + 1.0 - udiffuse;
-            // Flashlight effect
-            if(u_flashLight_On == 1){
-                vec3 surfaceToFlashlight = normalize(v_surfaceToFlashlight);
-                vec3 flashlightColor = u_flashlightColor;
-                float flashLightDot = dot(normal, surfaceToFlashlight);
-
-                float distanceToFlashlight = length(v_surfaceToFlashlight);
-
-
-                float falloff= smoothstep(u_flashlightOuterLimit, u_flashlightInnerLimit, distanceToFlashlight);
-
-                float flashlightIntensity = mix(flashLightDot, u_flashlightIntensity, falloff);
-                
-                float u_time = v_fogDepth;
-                float flickerFactor = 0.5 + 0.5 * sin(u_time * 2.0); 
-
-                gl_FragColor.rgb *= flashlightIntensity * flashlightColor * flickerFactor;
-            }
             
             if(wall_flag == 1){
-            vec3 surfaceToView = normalize(vsurfaceToView);
-            vec3 halfVector = normalize(ureverse_light_dir + surfaceToView);
-            float specular_light = pow(max(dot(normal, halfVector),0.0),ushine);
-            gl_FragColor.rgb+= uspecular*specular_light;
+                vec3 surfaceToView = normalize(vsurfaceToView);
+                vec3 halfVector = normalize(ureverse_light_dir + surfaceToView);
+                float specular_light = pow(max(dot(normal, halfVector),0.0),ushine);
+                gl_FragColor.rgb+= uspecular*specular_light;
+                
+            // Flashlight effect
+                if(u_flashLight_On == 1){
+                    vec3 surfaceToFlashlight = normalize(v_surfaceToFlashlight);
+                    vec3 flashlightColor = u_flashlightColor;
+                    
+                    // Use the flashlight direction provided in the uniform
+                    vec3 flashlightDirection = normalize(u_flashlightDirection);
+                
+                    float cosAngle = dot(normal, flashlightDirection);
+                
+                    // Define cone parameter
+                    float coneAngle = radians(u_flashlightConeAngle);
+                    float coneSoftness = u_flashlightConeSoftness;
+                    
+                    float innerLimit = cos(coneAngle * 0.5);
+                    float outerLimit = cos((coneAngle * 0.5) + coneSoftness);
+                    float falloff = smoothstep(innerLimit, outerLimit, cosAngle);
+                    
+                    // Calculate intensity based on distance
+                    float flashlightIntensity = pow(falloff, 2.0) * u_flashlightIntensity;
+                    float cameraIntensity = smoothstep(0.0, 1.0, dot(normalize(surfaceToView), normalize(-u_flashlightDirection)));
 
-
+                
+                    // Apply the flashlight effect
+                    gl_FragColor.rgb *= mix(vec3(1.0), flashlightColor, flashlightIntensity * cameraIntensity);
+                }
 
             // Fog Settings
             float depth = length(vsurfaceToView);
@@ -221,7 +233,7 @@
             float finalFogFactor = mix(fogFactor, 1.0, u_fogAmount);
             
             // Hier den Wert nach * verändern um die Helligkeit zu verändern
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, u_fogColor.rgb * 0.3, finalFogFactor * depthInRange); 
+            //gl_FragColor.rgb = mix(gl_FragColor.rgb, u_fogColor.rgb * 0.3, finalFogFactor * depthInRange); 
                 
         }
 
@@ -242,7 +254,7 @@
     <script type="text/javascript" src="Common/webgl-utils.js"></script>
     <script type="text/javascript" src="Common/initShaders.js"></script>
     <script type="text/javascript" src="Common/MV.js"></script>
-    <script type="module" src="maze.js" ></script>
+    <script type="module" src="maze.js"></script>
 </header>
 
 <body>
@@ -269,11 +281,11 @@
             </div>
             <div class="option">
                 <p>flashlightIntensity</p>
-                <input type="range" min="0" max="1" value="" step=".01" id="flashlightIntensity"></input>
+                <input type="range" min="0" max="1" value="1.0" step=".1" id="flashlightIntensity"></input>
             </div>
             <div class="option">
                 <p>InnerLimit</p>
-                <input type="range" min="0" max="180" value="10"  id="flashlightInnerLimit"></input>
+                <input type="range" min="0" max="180" value="10" id="flashlightInnerLimit"></input>
             </div>
             <div class="option">
                 <p>OuterLimit</p>

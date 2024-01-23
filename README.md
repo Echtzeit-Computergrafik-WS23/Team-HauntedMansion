@@ -1,1 +1,1 @@
-ReadMe hier erstellen
+ECG Team: Luca Moser und Hau-David Nguyen

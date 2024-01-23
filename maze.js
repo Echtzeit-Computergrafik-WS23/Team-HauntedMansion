@@ -1,4 +1,6 @@
 "use strict";
+import glance from './js/glance.js';
+
 var gl;
 var canvas;
 
@@ -23,14 +25,13 @@ var fogDensityPlat_loc;
 // Flashlight Elements
 var flashlightPosition_loc; 
 var flashlightDirection_loc;
-var flashlightCutoff_loc;
 var flashlightIntensity_loc; 
 var flashlightColor_loc;
 var flashlightOn_loc;
 var flashlightInnerLimit_loc;
 var flashlightOuterLimit_loc;
-var flashlightPosition = [0.0, 5.0, 0.0]; // Example position
-var flashlightDirection = [0.0, -1.0, 0.0]; // Example direction
+
+//const {mat4} = glance;
 
 function degToRad(d){
     return d * Math.PI / 180;
@@ -210,11 +211,17 @@ function init() {
     flashlightInnerLimit_loc = gl.getUniformLocation(shader_program_0, "u_flashlightInnerLimit");
     flashlightOuterLimit_loc = gl.getUniformLocation(shader_program_0, "u_flashlightOuterLimit");
     flashlightFlicker_loc = gl.getUniformLocation(shader_program_0, "u_time");
+    var flashlightCone_loc = gl.getUniformLocation(shader_program_0,"u_flashlightConeAngle");
+    var flashlightConeSoftness_loc = gl.getUniformLocation(shader_program_0,"u_flashlightConeSoftness");
+
     var flashlightOn = true;
-    var flashlightColor = [1, 0 ,0];
+    var flashlightColor = [1, 0.5, 0.5];
     var flashlightIntensity = 1.0;
-    var innerLimit = degToRad(10);
-    var outerLimit = degToRad(20);
+    console.log("intensity:", flashlightIntensity)
+    var flashlightInnerLimit = degToRad(10);
+    var flashlightOuterLimit = degToRad(20);
+    var coneAngle = 45.0;
+    var coneSoftness = 1.0;
 
     document.addEventListener('keydown', function(event) {
         // Check if the pressed key is the 'F' key
@@ -233,9 +240,10 @@ function init() {
     }
     gl.uniform3fv(flashlightColor_loc, flashlightColor);
     gl.uniform1f(flashlightIntensity_loc, flashlightIntensity);  
-    gl.uniform1f(flashlightInnerLimit_loc, Math.cos(innerLimit));
-    gl.uniform1f(flashlightOuterLimit_loc, Math.cos(outerLimit));
-    
+    gl.uniform1f(flashlightInnerLimit_loc, flashlightInnerLimit);
+    gl.uniform1f(flashlightOuterLimit_loc,flashlightOuterLimit);
+    gl.uniform1f(flashlightCone_loc, coneAngle);
+    gl.uniform1f(flashlightConeSoftness_loc, coneSoftness);
    
     // Setup Wände
     walls_vertices = [];
@@ -1002,29 +1010,18 @@ function animate() {
 
     // flashlight     
     var flashlightPosition = [camera_x , camera_y, camera_z]; // Set the flashlight position
-    var flashlightDirection = normalize(camera_direction); // Set the flashlight direction
-    gl.uniform3fv(flashlightPosition_loc, flashlightPosition);
-    gl.uniform3fv(flashlightDirection_loc, flashlightDirection);
+    //console.log(flashlightPosition);
+    var flashlightDirection = normalize(camera_direction ); // Set the flashlight direction
     
     // flicker effect
     var currentTime = Date.now();
     var elapsedTime = (currentTime - startTime) / 1000.0; // Convert to seconds
     gl.uniform1f(flashlightFlicker_loc, elapsedTime);
-
+    
+    gl.uniform3fv(flashlightPosition_loc, flashlightPosition);
+    gl.uniform3fv(flashlightDirection_loc, flashlightDirection);
 
     requestAnimationFrame(animate);
-}
-
-function updateFlashlight() {
-    
-    const cameraDirectionRadians = camera_direction * Math.PI / 180.0;
-
-    flashlightDirection[0] = Math.cos(cameraDirectionRadians); 
-    flashlightDirection[2] = Math.sin(cameraDirectionRadians); 
-
-    flashlightPosition[0] = camera_x;
-    flashlightPosition[1] = camera_y;
-    flashlightPosition[2] = camera_z;
 }
 
 function mouse_rotate(e) {
