@@ -1,5 +1,4 @@
 "use strict";
-import glance from './js/glance.js';
 
 var gl;
 var canvas;
@@ -215,13 +214,12 @@ function init() {
     var flashlightConeSoftness_loc = gl.getUniformLocation(shader_program_0,"u_flashlightConeSoftness");
 
     var flashlightOn = true;
-    var flashlightColor = [1, 0.5, 0.5];
-    var flashlightIntensity = 1.0;
-    console.log("intensity:", flashlightIntensity)
+    var flashlightColor = [255 / 255, 255 / 255, 240 / 255];
+    var flashlightIntensity = 30.0;
     var flashlightInnerLimit = degToRad(10);
     var flashlightOuterLimit = degToRad(20);
     var coneAngle = 45.0;
-    var coneSoftness = 1.0;
+    var coneSoftness = 20.0;
 
     document.addEventListener('keydown', function(event) {
         // Check if the pressed key is the 'F' key
@@ -442,12 +440,7 @@ function init() {
     document.getElementById("flashlightIntensity").oninput = function () {
         gl.uniform1f(flashlightIntensity_loc, this.value);
     };
-    document.getElementById("flashlightInnerLimit").oninput = function () {
-        gl.uniform1f(flashlightInnerLimit_loc, this.value);
-    };
-    document.getElementById("flashlightOuterLimit").oninput = function () {
-        gl.uniform1f(flashlightOuterLimit_loc, this.value);
-    };
+    
    
     document.getElementById("cell_size").oninput = function () {
         maze_cell_size = this.value;

@@ -190,13 +190,8 @@
             float diffuse_light = udiffuse * max(dot(normal, ureverse_light_dir), 0.0);       
             gl_FragColor = texture2D(utexture, vtextcoord);
             gl_FragColor.rgb*= diffuse_light + 1.0 - udiffuse;
-            
-            if(wall_flag == 1){
-                vec3 surfaceToView = normalize(vsurfaceToView);
-                vec3 halfVector = normalize(ureverse_light_dir + surfaceToView);
-                float specular_light = pow(max(dot(normal, halfVector),0.0),ushine);
-                gl_FragColor.rgb+= uspecular*specular_light;
-                
+            vec3 surfaceToView = normalize(vsurfaceToView);
+
             // Flashlight effect
                 if(u_flashLight_On == 1){
                     vec3 surfaceToFlashlight = normalize(v_surfaceToFlashlight);
@@ -219,21 +214,29 @@
                     float flashlightIntensity = pow(falloff, 2.0) * u_flashlightIntensity;
                     float cameraIntensity = smoothstep(0.0, 1.0, dot(normalize(surfaceToView), normalize(-u_flashlightDirection)));
 
+                    // Flickereffekt
+                    float u_time = v_fogDepth;
+                    float flickerFactor =  0.5 * sin(u_time * .6); 
                 
                     // Apply the flashlight effect
                     gl_FragColor.rgb *= mix(vec3(1.0), flashlightColor, flashlightIntensity * cameraIntensity);
                 }
+            if(wall_flag == 1){
+                vec3 halfVector = normalize(ureverse_light_dir + surfaceToView);
+                float specular_light = pow(max(dot(normal, halfVector),0.0),ushine);
+                gl_FragColor.rgb+= uspecular*specular_light;
+                
 
-            // Fog Settings
-            float depth = length(vsurfaceToView);
-            float depthInRange = clamp((depth - u_fogNear) / (u_fogFar - u_fogNear), 0.0, 1.0);
-            #define LOG2 1.442695
+                // Fog Settings
+                float depth = length(vsurfaceToView);
+                float depthInRange = clamp((depth - u_fogNear) / (u_fogFar - u_fogNear), 0.0, 1.0);
+                #define LOG2 1.442695
 
-            float fogFactor = 1.0 - exp2(-u_fogDensity * u_fogDensity * depth * depth * LOG2);
-            float finalFogFactor = mix(fogFactor, 1.0, u_fogAmount);
-            
-            // Hier den Wert nach * verändern um die Helligkeit zu verändern
-            //gl_FragColor.rgb = mix(gl_FragColor.rgb, u_fogColor.rgb * 0.3, finalFogFactor * depthInRange); 
+                float fogFactor = 1.0 - exp2(-u_fogDensity * u_fogDensity * depth * depth * LOG2);
+                float finalFogFactor = mix(fogFactor, 1.0, u_fogAmount);
+                
+                // Hier den Wert nach * verändern um die Helligkeit zu verändern
+                gl_FragColor.rgb = mix(gl_FragColor.rgb, u_fogColor.rgb * 0.5, finalFogFactor * depthInRange); 
                 
         }
 
@@ -281,16 +284,9 @@
             </div>
             <div class="option">
                 <p>flashlightIntensity</p>
-                <input type="range" min="0" max="1" value="1.0" step=".1" id="flashlightIntensity"></input>
+                <input type="range" min="0" max="100" value="1" step=".1" id="flashlightIntensity"></input>
             </div>
-            <div class="option">
-                <p>InnerLimit</p>
-                <input type="range" min="0" max="180" value="10" id="flashlightInnerLimit"></input>
-            </div>
-            <div class="option">
-                <p>OuterLimit</p>
-                <input type="range" min="0" max="180" value="20" id="flashlightOuterLimit"></input>
-            </div>
+            
         </div>
         <!-- Maze Menu Texturen  -->
         <div class="catagory">
